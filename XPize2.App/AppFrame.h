@@ -22,6 +22,7 @@ private:
 	void OnPreviousImage(wxCommandEvent& event);
 	void OnFirstImage(wxCommandEvent& event);
 	void OnLastImage(wxCommandEvent& event);
+	void OnJumpPage(wxCommandEvent& event);
 	void OnExtractionDone(ExtractionDoneEvent& event);
 	static void ListFilesRecursive(const wxString& path, std::vector<wxString>& out);
 	void ListFiles(const wxString& path);
@@ -31,6 +32,6 @@ private:
 	Scroller* m_scroller;
 	std::vector<wxString> m_currentFileList;
 	wxString m_outputPath;
-	std::vector<wxString>::iterator m_currentFile;
+	std::vector<wxString>::const_iterator m_currentFile;
 };
 

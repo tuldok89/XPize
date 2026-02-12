@@ -70,11 +70,11 @@
 		</Linker>
 		<Unit filename="AppFrame.cpp" />
 		<Unit filename="AppFrame.h" />
-		<Unit filename="ArchiveFileLister.cpp" />
-		<Unit filename="ArchiveFileLister.h" />
-		<Unit filename="ArchiveReader.cpp" />
-		<Unit filename="ArchiveReader.h" />
+		<Unit filename="ArchiveExtractor.cpp" />
+		<Unit filename="ArchiveExtractor.h" />
 		<Unit filename="Constants.h" />
+		<Unit filename="ExtractionDoneEvent.cpp" />
+		<Unit filename="ExtractionDoneEvent.h" />
 		<Unit filename="LoadImageEvent.cpp" />
 		<Unit filename="LoadImageEvent.h" />
 		<Unit filename="MainApp.cpp" />

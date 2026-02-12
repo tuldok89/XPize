@@ -4,6 +4,7 @@
 #include <wx/filename.h>
 #include <wx/dir.h>
 #include <wx/mimetype.h>
+#include <wx/textdlg.h>
 
 #include <algorithm>
 #include <future>
@@ -30,11 +31,14 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 	firstMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_HOME));
 	auto lastMenuItem = new wxMenuItem(navMenu, wxID_LAST, wxT("Last Image"), wxT("Load last image"));
 	lastMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_END));
+	auto jumpMenuItem = new wxMenuItem(navMenu, wxID_JUMP_TO, wxT("Jump to..."), wxT("Jump to page"));
+	jumpMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_CTRL, static_cast<int>('J')));
 
 	navMenu->Append(nextMenuItem);
 	navMenu->Append(prevMenuItem);
 	navMenu->Append(firstMenuItem);
 	navMenu->Append(lastMenuItem);
+	navMenu->Append(jumpMenuItem);
 
 	auto fileMenu = new wxMenu;
 	fileMenu->Append(wxID_OPEN);
@@ -65,6 +69,7 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 	Bind(wxEVT_MENU, &AppFrame::OnPreviousImage, this, wxID_BACKWARD);
 	Bind(wxEVT_MENU, &AppFrame::OnFirstImage, this, wxID_FIRST);
 	Bind(wxEVT_MENU, &AppFrame::OnLastImage, this, wxID_LAST);
+	Bind(wxEVT_MENU, &AppFrame::OnJumpPage, this, wxID_JUMP_TO);
 	Bind(APP_EVT_EXTRACTION_DONE, &AppFrame::OnExtractionDone, this);
 }
 
@@ -136,7 +141,7 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 
 void AppFrame::OnNextImage(wxCommandEvent& event)
 {
-	if (m_currentFile == m_currentFileList.end() - 1)
+	if (m_currentFile == m_currentFileList.cend() - 1)
 		return;
 	++m_currentFile;
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
@@ -144,7 +149,7 @@ void AppFrame::OnNextImage(wxCommandEvent& event)
 
 void AppFrame::OnPreviousImage(wxCommandEvent& event)
 {
-	if (m_currentFile == m_currentFileList.begin())
+	if (m_currentFile == m_currentFileList.cbegin())
 		return;
 	--m_currentFile;
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
@@ -154,7 +159,7 @@ void AppFrame::OnFirstImage(wxCommandEvent& event)
 {
 	if (m_currentFileList.empty())
 		return;
-	m_currentFile = m_currentFileList.begin();
+	m_currentFile = m_currentFileList.cbegin();
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
 }
 
@@ -162,8 +167,31 @@ void AppFrame::OnLastImage(wxCommandEvent& event)
 {
 	if (m_currentFileList.empty())
 		return;
-	m_currentFile = m_currentFileList.end() - 1;
+	m_currentFile = m_currentFileList.cend() - 1;
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+}
+
+void AppFrame::OnJumpPage(wxCommandEvent& event)
+{
+	if (m_currentFileList.empty())
+		return;
+
+	wxTextEntryDialog input(this, wxString::Format(wxT("Max value: %s"), std::to_string(m_currentFileList.size())), wxT("Enter page number"));
+
+	if (input.ShowModal() == wxID_OK)
+	{
+		int value;
+		auto result = input.GetValue().ToInt(&value);
+		if (!result || value <= 0 || value > static_cast<int>(m_currentFileList.size()))
+		{
+			wxMessageBox(wxT("Invalid page"), wxT("Input error"), wxOK | wxICON_EXCLAMATION);
+			return;
+		}
+
+		m_currentFile = m_currentFileList.cbegin() + value - 1;
+		wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+	}
+
 }
 
 void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)

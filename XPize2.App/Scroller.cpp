@@ -8,7 +8,7 @@ Scroller::Scroller(wxWindow* parent)
 	SetScrollRate(64, 64);
 	auto sizer = new wxBoxSizer(wxVERTICAL);
 	m_imageControl = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap);
-	sizer->Add(m_imageControl, 1, wxEXPAND | wxALL, 0);
+	sizer->Add(m_imageControl, 1, wxEXPAND, 0);
 	SetSizer(sizer);
 	//FitInside();
 	//Layout();
