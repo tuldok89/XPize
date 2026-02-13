@@ -141,18 +141,18 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 
 void AppFrame::OnNextImage(wxCommandEvent& event)
 {
-	if (m_currentFile == m_currentFileList.cend() - 1)
+	if (!m_currentFile.has_value() || m_currentFile == m_currentFileList.cend() - 1)
 		return;
-	++m_currentFile;
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+	++(m_currentFile.value());
+	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
 }
 
 void AppFrame::OnPreviousImage(wxCommandEvent& event)
 {
-	if (m_currentFile == m_currentFileList.cbegin())
+	if (!m_currentFile.has_value() || m_currentFile == m_currentFileList.cbegin())
 		return;
-	--m_currentFile;
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+	--(m_currentFile.value());
+	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
 }
 
 void AppFrame::OnFirstImage(wxCommandEvent& event)
@@ -160,7 +160,7 @@ void AppFrame::OnFirstImage(wxCommandEvent& event)
 	if (m_currentFileList.empty())
 		return;
 	m_currentFile = m_currentFileList.cbegin();
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
 }
 
 void AppFrame::OnLastImage(wxCommandEvent& event)
@@ -168,7 +168,7 @@ void AppFrame::OnLastImage(wxCommandEvent& event)
 	if (m_currentFileList.empty())
 		return;
 	m_currentFile = m_currentFileList.cend() - 1;
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
 }
 
 void AppFrame::OnJumpPage(wxCommandEvent& event)
@@ -189,7 +189,7 @@ void AppFrame::OnJumpPage(wxCommandEvent& event)
 		}
 
 		m_currentFile = m_currentFileList.cbegin() + value - 1;
-		wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+		wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
 	}
 
 }
@@ -208,7 +208,7 @@ void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 		return;
 	}
 
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *m_currentFile));
+	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
 }
 
 void AppFrame::ListFilesRecursive(const wxString& path, std::vector<wxString>& out)

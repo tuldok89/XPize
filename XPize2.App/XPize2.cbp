@@ -17,15 +17,12 @@
 					<Add option="-Og" />
 					<Add option="-g" />
 					<Add option="-D__WXDEBUG__" />
-					<Add directory="C:/Apps/wx-ucrt/lib/gcc_x64_dll/mswud" />
+					<Add directory="C:/Apps/wxWidgets/lib/gcc_x64_dll/mswud" />
 				</Compiler>
-				<ResourceCompiler>
-					<Add directory="C:/Code/wxWidgets-3/lib/gcc_dll/mswud" />
-				</ResourceCompiler>
 				<Linker>
 					<Add library="libwxmsw32ud_core.a" />
 					<Add library="libwxbase32ud.a" />
-					<Add directory="C:/Apps/wx-ucrt/lib/gcc_x64_dll" />
+					<Add directory="C:/Apps/wxWidgets/lib/gcc_x64_dll" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -36,16 +33,13 @@
 				<Option projectLinkerOptionsRelation="2" />
 				<Compiler>
 					<Add option="-O3" />
-					<Add directory="C:/Apps/wx-ucrt/lib/gcc_x64_dll/mswu" />
+					<Add directory="C:/Apps/wxWidgets/lib/gcc_x64_dll/mswu" />
 				</Compiler>
-				<ResourceCompiler>
-					<Add directory="C:/Code/wxWidgets-3/lib/gcc_dll/mswu" />
-				</ResourceCompiler>
 				<Linker>
 					<Add option="-s" />
 					<Add library="libwxmsw32u_core.a" />
 					<Add library="libwxbase32u.a" />
-					<Add directory="C:/Apps/wx-ucrt/lib/gcc_x64_dll" />
+					<Add directory="C:/Apps/wxWidgets/lib/gcc_x64_dll" />
 				</Linker>
 			</Target>
 		</Build>
@@ -56,12 +50,12 @@
 			<Add option="-D__WXMSW__" />
 			<Add option="-DWXUSINGDLL" />
 			<Add option="-DwxUSE_UNICODE" />
-			<Add directory="C:/Apps/wx-ucrt/include" />
+			<Add directory="C:/Apps/wxWidgets/include" />
 		</Compiler>
 		<ResourceCompiler>
 			<Add option="-DwxUSE_RC_MANIFEST=1" />
 			<Add option="-DwxUSE_DPI_AWARE_MANIFEST=2" />
-			<Add directory="C:/Apps/wx-ucrt/include" />
+			<Add directory="C:/Apps/wxWidgets/include" />
 		</ResourceCompiler>
 		<Linker>
 			<Add option="-mthreads" />

@@ -1,6 +1,7 @@
 #pragma once
 #include <wx/string.h>
 #include <vector>
+#include <optional>
 
 class wxFrame;
 class wxCommandEvent;
@@ -32,6 +33,6 @@ private:
 	Scroller* m_scroller;
 	std::vector<wxString> m_currentFileList;
 	wxString m_outputPath;
-	std::vector<wxString>::const_iterator m_currentFile;
+	std::optional<std::vector<wxString>::const_iterator> m_currentFile;
 };
 
