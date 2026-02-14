@@ -19,19 +19,20 @@
 #include "Util.h"
 #include "ArchiveExtractor.h"
 #include "ExtractionDoneEvent.h"
+#include "DirTraverser.h"
 
 AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader"))
 {
 	auto navMenu = new wxMenu;
-	auto nextMenuItem = new wxMenuItem(navMenu, wxID_FORWARD, wxT("Next Image"), wxT("Load next image"));
+	auto nextMenuItem = new wxMenuItem(navMenu, wxID_FORWARD, wxT("&Next Image"), wxT("Load next image"));
 	nextMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_PAGEDOWN));
-	auto prevMenuItem = new wxMenuItem(navMenu, wxID_BACKWARD, wxT("Previous Image"), wxT("Load previous image"));
+	auto prevMenuItem = new wxMenuItem(navMenu, wxID_BACKWARD, wxT("&Previous Image"), wxT("Load previous image"));
 	prevMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_PAGEUP));
-	auto firstMenuItem = new wxMenuItem(navMenu, wxID_FIRST, wxT("First Image"), wxT("Load first image"));
+	auto firstMenuItem = new wxMenuItem(navMenu, wxID_FIRST, wxT("&First Image"), wxT("Load first image"));
 	firstMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_HOME));
-	auto lastMenuItem = new wxMenuItem(navMenu, wxID_LAST, wxT("Last Image"), wxT("Load last image"));
+	auto lastMenuItem = new wxMenuItem(navMenu, wxID_LAST, wxT("&Last Image"), wxT("Load last image"));
 	lastMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_END));
-	auto jumpMenuItem = new wxMenuItem(navMenu, wxID_JUMP_TO, wxT("Jump to..."), wxT("Jump to page"));
+	auto jumpMenuItem = new wxMenuItem(navMenu, wxID_JUMP_TO, wxT("&Jump to..."), wxT("Jump to page"));
 	jumpMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_CTRL, static_cast<int>('J')));
 
 	navMenu->Append(nextMenuItem);
@@ -42,9 +43,9 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 
 	auto fileMenu = new wxMenu;
 	fileMenu->Append(wxID_OPEN);
-	fileMenu->AppendSubMenu(navMenu, wxT("Navigation"));
+	fileMenu->AppendSubMenu(navMenu, wxT("&Navigation"));
 	fileMenu->AppendSeparator();
-	fileMenu->Append(wxID_EXIT);
+	fileMenu->Append(wxID_EXIT, wxT("&Quit\tCtrl-Q"));
 
 	auto helpMenu = new wxMenu;
 	helpMenu->Append(wxID_ABOUT);
@@ -176,7 +177,7 @@ void AppFrame::OnJumpPage(wxCommandEvent& event)
 	if (m_currentFileList.empty())
 		return;
 
-	wxTextEntryDialog input(this, wxString::Format(wxT("Max value: %s"), std::to_string(m_currentFileList.size())), wxT("Enter page number"));
+	wxTextEntryDialog input(this, wxString::Format(wxT("Total pages: %s"), std::to_string(m_currentFileList.size())), wxT("Enter page number"));
 
 	if (input.ShowModal() == wxID_OK)
 	{
@@ -196,9 +197,12 @@ void AppFrame::OnJumpPage(wxCommandEvent& event)
 
 void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 {
+	DirTraverser traverser(m_currentFileList);
+	wxDir dir(m_outputPath);
+
 	this->SetCursor(wxCursor(wxCURSOR_DEFAULT));
 	m_currentFileList.clear();
-	ListFiles(m_outputPath);
+	dir.Traverse(traverser);
 	std::sort(m_currentFileList.begin(), m_currentFileList.end(), comparator);
 	m_currentFile = m_currentFileList.begin();
 
@@ -209,61 +213,6 @@ void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 	}
 
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-}
-
-void AppFrame::ListFilesRecursive(const wxString& path, std::vector<wxString>& out)
-{
-	wxDir dir(path);
-	if (!dir.IsOpened())
-		return;
-
-	wxString name;
-	wxMimeTypesManager mgr;
-
-	// Files in this directory
-	bool cont = dir.GetFirst(&name, wxEmptyString, wxDIR_FILES);
-
-	while (cont)
-	{
-		wxFileName filePath;
-		filePath.Assign(path);
-		filePath.SetFullName(name);
-
-		auto fileType = std::unique_ptr<wxFileType>(mgr.GetFileTypeFromExtension(filePath.GetExt()));
-		wxString mimeType;
-
-		fileType->GetMimeType(&mimeType);
-
-		if (fileType != nullptr && fileType->GetMimeType(&mimeType)
-			&& mimeType == wxT("image/jpeg") || mimeType == wxT("image/png")
-			|| mimeType == wxT("image/gif") || mimeType == wxT("image/bmp")
-			|| mimeType == wxT("image/webp") || mimeType == wxT("image/tiff"))
-		{
-			out.push_back(filePath.GetFullPath());
-		}
-		
-		cont = dir.GetNext(&name);
-	}
-
-	// Subdirectories
-	cont = dir.GetFirst(&name, wxEmptyString, wxDIR_DIRS);
-	while (cont)
-	{
-		if (name != "." && name != "..")
-		{
-			wxFileName dirPath;
-			dirPath.Assign(path);
-			dirPath.AppendDir(name);
-			auto sub = dirPath.GetFullPath();
-			ListFilesRecursive(sub, out); // recurse
-		}
-		cont = dir.GetNext(&name);
-	}
-}
-
-void AppFrame::ListFiles(const wxString& path)
-{
-	ListFilesRecursive(path, m_currentFileList);
 }
 
 bool AppFrame::comparator(const wxString& a, const wxString& b)

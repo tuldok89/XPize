@@ -111,7 +111,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;WXUSINGDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
@@ -150,6 +150,7 @@
   <ItemGroup>
     <ClCompile Include="AppFrame.cpp" />
     <ClCompile Include="ArchiveExtractor.cpp" />
+    <ClCompile Include="DirTraverser.cpp" />
     <ClCompile Include="ExtractionDoneEvent.cpp" />
     <ClCompile Include="LoadImageEvent.cpp" />
     <ClCompile Include="MainApp.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="AppFrame.h" />
     <ClInclude Include="ArchiveExtractor.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="DirTraverser.h" />
     <ClInclude Include="ExtractionDoneEvent.h" />
     <ClInclude Include="LoadImageEvent.h" />
     <ClInclude Include="MainApp.h" />

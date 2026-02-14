@@ -25,8 +25,6 @@ private:
 	void OnLastImage(wxCommandEvent& event);
 	void OnJumpPage(wxCommandEvent& event);
 	void OnExtractionDone(ExtractionDoneEvent& event);
-	static void ListFilesRecursive(const wxString& path, std::vector<wxString>& out);
-	void ListFiles(const wxString& path);
 	static bool comparator(const wxString& a, const wxString& b);
 	
 	wxIcon m_appIcon{};
