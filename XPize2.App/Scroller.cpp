@@ -10,8 +10,6 @@ Scroller::Scroller(wxWindow* parent)
 	m_imageControl = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap);
 	sizer->Add(m_imageControl, 1, wxEXPAND, 0);
 	SetSizer(sizer);
-	//FitInside();
-	//Layout();
 	wxInitAllImageHandlers();
 
 	Bind(APP_EVT_LOAD_IMAGE, &Scroller::OnLoadImage, this);
@@ -23,8 +21,6 @@ void Scroller::OnLoadImage(LoadImageEvent& event)
 	image.LoadFile(event.GetPath());
 	wxBitmap bitmap(image);
 	m_imageControl->SetBitmap(bitmap);
-	//FitInside();
-	//Layout();
 	Layout();
 	FitInside();
 	Scroll(0, 0);

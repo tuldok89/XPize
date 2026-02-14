@@ -36,8 +36,6 @@ size_t ArchiveExtractor::extract(const wxString& fileName, const wxString& outpu
 {
     int r;
     size_t count = 0;
-    auto utf8output = outputDir.ToUTF8().data();
-	auto utf8input = fileName.ToUTF8().data();
 
     fs::create_directories(outputDir.ToUTF8().data());
 
@@ -52,15 +50,15 @@ size_t ArchiveExtractor::extract(const wxString& fileName, const wxString& outpu
     int flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_SECURE_NODOTDOT;
     archive_write_disk_set_options(ext.get(), flags);
 
-    r = archive_read_open_filename(a.get(), utf8input, 10240);
+    r = archive_read_open_filename_w(a.get(), fileName.wc_str(), 10240);
     if (r != ARCHIVE_OK) {
         throw std::runtime_error("Failed to open: " + std::string(archive_error_string(a.get())));
     }
 
     struct archive_entry* entry;
     while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK) {
-        fs::path fullOutputPath = fs::path(utf8output) / archive_entry_pathname(entry);
-        archive_entry_set_pathname(entry, fullOutputPath.string().c_str());
+        fs::path fullOutputPath = fs::path(outputDir.wc_str()) / archive_entry_pathname_w(entry);
+        archive_entry_set_pathname_utf8(entry, reinterpret_cast<const char*>(fullOutputPath.u8string().c_str()));
 
         if (archive_write_header(ext.get(), entry) == ARCHIVE_OK) {
             copyData(a.get(), ext.get());
