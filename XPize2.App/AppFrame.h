@@ -25,6 +25,7 @@ private:
 	void OnLastImage(wxCommandEvent& event);
 	void OnJumpPage(wxCommandEvent& event);
 	void OnExtractionDone(ExtractionDoneEvent& event);
+	void OnAboutToolkit(wxCommandEvent& event);
 	static bool comparator(const wxString& a, const wxString& b);
 	
 	wxIcon m_appIcon{};

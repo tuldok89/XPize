@@ -3,7 +3,6 @@
 #include <memory>
 #include <stdexcept>
 #include <filesystem>
-#include <iostream>
 
 #include "ArchiveExtractor.h"
 

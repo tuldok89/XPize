@@ -2,7 +2,15 @@
 #include <wx/dir.h>
 #include <wx/filename.h>
 #include <wx/mimetype.h>
+
+#include <memory>
+#include <algorithm>
+
 #include "DirTraverser.h"
+
+wxMimeTypesManager DirTraverser::m_mgr;
+const std::array<wxString, 6> DirTraverser::m_allowed = { wxT("image/jpeg"), wxT("image/png"), wxT("image/gif"),
+    wxT("image/bmp"), wxT("image/webp"), wxT("image/tiff") };
 
 DirTraverser::DirTraverser(std::vector<wxString>& files) : m_files(files)
 {
@@ -11,17 +19,20 @@ DirTraverser::DirTraverser(std::vector<wxString>& files) : m_files(files)
 wxDirTraverseResult DirTraverser::OnFile(const wxString& fileName)
 {
 	wxFileName filePath;
-	wxMimeTypesManager mgr;
 	filePath.Assign(fileName);
-	
-	auto fileType = std::unique_ptr<wxFileType>(mgr.GetFileTypeFromExtension(filePath.GetExt()));
-	wxString mimeType;
-	fileType->GetMimeType(&mimeType);
 
-	if (fileType != nullptr && fileType->GetMimeType(&mimeType)
-		&& mimeType == wxT("image/jpeg") || mimeType == wxT("image/png")
-		|| mimeType == wxT("image/gif") || mimeType == wxT("image/bmp")
-		|| mimeType == wxT("image/webp") || mimeType == wxT("image/tiff"))
+	auto fileType = std::unique_ptr<wxFileType>(m_mgr.GetFileTypeFromExtension(filePath.GetExt()));
+
+	if (fileType == nullptr)
+	{
+		return wxDIR_CONTINUE;
+	}
+
+	wxString mimeType;
+	auto mimeResult = fileType->GetMimeType(&mimeType);
+	auto exists = std::find(m_allowed.cbegin(), m_allowed.cend(), mimeType) != m_allowed.cend();
+
+	if (mimeResult && exists)
 	{
 		m_files.push_back(filePath.GetFullPath());
 	}

@@ -5,6 +5,7 @@
 #include <wx/dir.h>
 #include <wx/mimetype.h>
 #include <wx/textdlg.h>
+#include <wx/utils.h>
 
 #include <algorithm>
 #include <future>
@@ -20,6 +21,10 @@
 #include "ArchiveExtractor.h"
 #include "ExtractionDoneEvent.h"
 #include "DirTraverser.h"
+
+enum AppEvtID {
+	ID_ABOUT_TOOLKIT
+};
 
 AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader"))
 {
@@ -49,6 +54,7 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 
 	auto helpMenu = new wxMenu;
 	helpMenu->Append(wxID_ABOUT);
+	helpMenu->Append(ID_ABOUT_TOOLKIT, wxT("About Toolkit"));
 
 	auto menuBar = new wxMenuBar;
 	menuBar->Append(fileMenu, wxT("&File"));
@@ -71,6 +77,7 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 	Bind(wxEVT_MENU, &AppFrame::OnFirstImage, this, wxID_FIRST);
 	Bind(wxEVT_MENU, &AppFrame::OnLastImage, this, wxID_LAST);
 	Bind(wxEVT_MENU, &AppFrame::OnJumpPage, this, wxID_JUMP_TO);
+	Bind(wxEVT_MENU, &AppFrame::OnAboutToolkit, this, ID_ABOUT_TOOLKIT);
 	Bind(APP_EVT_EXTRACTION_DONE, &AppFrame::OnExtractionDone, this);
 }
 
@@ -127,7 +134,7 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 
 	this->SetCursor(wxCursor(wxCURSOR_WAIT));
 
-	auto& outputPath = m_outputPath;
+	auto& outputPath = m_outputPath; 
 
 	std::future<size_t> extractionTask = std::async(std::launch::async, [this, &inputArchive, outputPath]() {
 		ArchiveExtractor extractor;
@@ -213,6 +220,11 @@ void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 	}
 
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+}
+
+void AppFrame::OnAboutToolkit(wxCommandEvent& event)
+{
+	wxInfoMessageBox(this);
 }
 
 bool AppFrame::comparator(const wxString& a, const wxString& b)

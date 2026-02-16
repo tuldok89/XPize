@@ -67,6 +67,8 @@
 		<Unit filename="ArchiveExtractor.cpp" />
 		<Unit filename="ArchiveExtractor.h" />
 		<Unit filename="Constants.h" />
+		<Unit filename="DirTraverser.cpp" />
+		<Unit filename="DirTraverser.h" />
 		<Unit filename="ExtractionDoneEvent.cpp" />
 		<Unit filename="ExtractionDoneEvent.h" />
 		<Unit filename="LoadImageEvent.cpp" />
