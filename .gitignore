@@ -45,6 +45,25 @@ Generated\ Files/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+# CMake build files
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Makefile
+cmake_install.cmake
+compile_commands.json
+*.cmake
+
+# IDE directories
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # NUnit
 *.VisualState.xml
 TestResult.xml

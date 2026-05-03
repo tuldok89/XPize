@@ -1,0 +1,21 @@
+{
+  "dependencies": [
+    "wxwidgets",
+    {
+      "name": "libarchive",
+      "features": ["bzip2", "lzma", "zstd"]
+    }
+
+  ],
+  "builtin-baseline": "c2f8cd332adf7720d5b91f70945840f308dfb6a7",
+  "overrides": [
+    {
+      "name": "wxwidgets",
+      "version": "3.2.8.1"
+    },
+    {
+      "name": "libarchive",
+      "version": "3.8.5"
+    }
+  ]
+}
