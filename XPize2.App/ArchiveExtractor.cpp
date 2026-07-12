@@ -36,7 +36,7 @@ size_t ArchiveExtractor::extract(const wxString& fileName, const wxString& outpu
     int r;
     size_t count = 0;
 
-    fs::create_directories(outputDir.ToUTF8().data());
+    fs::create_directories(fs::path(outputDir.wc_str()));
 
     ArchiveReaderPtr a(archive_read_new());
     if (!a) throw std::runtime_error("Failed to create archive reader.");

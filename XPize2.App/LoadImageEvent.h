@@ -2,8 +2,6 @@
 
 #include <wx/event.h>
 
-class wxPoint;
-
 class LoadImageEvent : public wxEvent
 {
 public:

@@ -2,6 +2,7 @@
 #include <wx/string.h>
 #include <vector>
 #include <optional>
+#include <future>
 
 class wxFrame;
 class wxCommandEvent;
@@ -26,12 +27,12 @@ private:
 	void OnJumpPage(wxCommandEvent& event);
 	void OnExtractionDone(ExtractionDoneEvent& event);
 	void OnAboutToolkit(wxCommandEvent& event);
-	static bool comparator(const wxString& a, const wxString& b);
 	
 	wxIcon m_appIcon{};
 	Scroller* m_scroller;
 	std::vector<wxString> m_currentFileList;
 	wxString m_outputPath;
 	std::optional<std::vector<wxString>::const_iterator> m_currentFile;
+	std::future<size_t> m_extractionFuture;
 };
 

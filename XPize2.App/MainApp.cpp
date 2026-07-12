@@ -8,6 +8,7 @@ bool MainApp::OnInit()
 	{
 		return false;
 	}
+	wxInitAllImageHandlers();
 
 	auto window = new AppFrame();
 	window->Show(true);

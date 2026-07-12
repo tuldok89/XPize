@@ -38,7 +38,7 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 	auto lastMenuItem = new wxMenuItem(navMenu, wxID_LAST, wxT("&Last Image"), wxT("Load last image"));
 	lastMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_END));
 	auto jumpMenuItem = new wxMenuItem(navMenu, wxID_JUMP_TO, wxT("&Jump to..."), wxT("Jump to page"));
-	jumpMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_CTRL, static_cast<int>('J')));
+	jumpMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_CTRL, 'J'));
 
 	navMenu->Append(nextMenuItem);
 	navMenu->Append(prevMenuItem);
@@ -136,7 +136,7 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 
 	auto& outputPath = m_outputPath; 
 
-	std::future<size_t> extractionTask = std::async(std::launch::async, [this, &inputArchive, outputPath]() {
+	m_extractionFuture = std::async(std::launch::async, [this, inputArchive, outputPath]() {
 		ArchiveExtractor extractor;
 		auto count = extractor.extract(inputArchive, outputPath);
 		auto doneEvent = new ExtractionDoneEvent(APP_EVT_EXTRACTION_DONE, wxID_ANY);
@@ -204,13 +204,13 @@ void AppFrame::OnJumpPage(wxCommandEvent& event)
 
 void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 {
+	m_currentFileList.clear();
 	DirTraverser traverser(m_currentFileList);
 	wxDir dir(m_outputPath);
 
 	this->SetCursor(wxCursor(wxCURSOR_DEFAULT));
-	m_currentFileList.clear();
 	dir.Traverse(traverser);
-	std::sort(m_currentFileList.begin(), m_currentFileList.end(), comparator);
+	std::sort(m_currentFileList.begin(), m_currentFileList.end(), NaturalComparer());
 	m_currentFile = m_currentFileList.begin();
 
 	if (m_currentFile == m_currentFileList.end())
@@ -225,9 +225,4 @@ void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 void AppFrame::OnAboutToolkit(wxCommandEvent& event)
 {
 	wxInfoMessageBox(this);
-}
-
-bool AppFrame::comparator(const wxString& a, const wxString& b)
-{
-	return StrCmpLogicalW(a.wc_str(), b.wc_str()) < 0;
 }

@@ -10,7 +10,6 @@ Scroller::Scroller(wxWindow* parent)
 	m_imageControl = new wxStaticBitmap(this, wxID_ANY, wxNullBitmap);
 	sizer->Add(m_imageControl, 1, wxEXPAND, 0);
 	SetSizer(sizer);
-	wxInitAllImageHandlers();
 
 	Bind(APP_EVT_LOAD_IMAGE, &Scroller::OnLoadImage, this);
 }
@@ -18,7 +17,13 @@ Scroller::Scroller(wxWindow* parent)
 void Scroller::OnLoadImage(LoadImageEvent& event)
 {
 	wxImage image;
-	image.LoadFile(event.GetPath());
+	auto result = image.LoadFile(event.GetPath());
+	if (!result)
+	{
+		wxMessageBox(wxT("Failed to load image: ") + event.GetPath(), wxT("Error"), wxOK | wxICON_ERROR);
+		return;
+	}
+
 	wxBitmap bitmap(image);
 	m_imageControl->SetBitmap(bitmap);
 	Layout();
