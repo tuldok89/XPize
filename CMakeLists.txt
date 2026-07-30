@@ -93,6 +93,11 @@ if(WIN32)
             NDEBUG
         )
     endif()
+
+    # Pass defines to the resource compiler (used by wx/msw/wx.rc for manifest embedding)
+    set_source_files_properties(XPize2.App/XPize2.App.rc PROPERTIES
+        COMPILE_DEFINITIONS "wxUSE_RC_MANIFEST;wxUSE_DPI_AWARE_MANIFEST=2"
+    )
 endif()
 
 # Set the output directory

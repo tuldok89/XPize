@@ -64,7 +64,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>ClangCL</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -235,7 +235,9 @@
     <ClCompile Include="ExtractionDoneEvent.cpp" />
     <ClCompile Include="LoadImageEvent.cpp" />
     <ClCompile Include="MainApp.cpp" />
+    <ClCompile Include="NavigationEvent.cpp" />
     <ClCompile Include="Scroller.cpp" />
+    <ClCompile Include="StatusBar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XPize2.App.rc" />
@@ -248,7 +250,9 @@
     <ClInclude Include="ExtractionDoneEvent.h" />
     <ClInclude Include="LoadImageEvent.h" />
     <ClInclude Include="MainApp.h" />
+    <ClInclude Include="NavigationEvent.h" />
     <ClInclude Include="Scroller.h" />
+    <ClInclude Include="StatusBar.h" />
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <ItemGroup>

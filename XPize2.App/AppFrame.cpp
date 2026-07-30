@@ -21,6 +21,8 @@
 #include "ArchiveExtractor.h"
 #include "ExtractionDoneEvent.h"
 #include "DirTraverser.h"
+#include "NavigationEvent.h"
+#include "StatusBar.h"
 
 enum AppEvtID {
 	ID_ABOUT_TOOLKIT
@@ -65,8 +67,8 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 
 	SetIcon(m_appIcon);
 	SetMenuBar(menuBar);
-	CreateStatusBar();
-	SetStatusText(wxT("Welcome to XPize Comic Book Reader!"));
+	m_statusBar = new StatusBar(wxT("Welcome to XPize Comic Book Reader!"), this);
+	SetStatusBar(m_statusBar);
 	Maximize();
 
 	Bind(wxEVT_MENU, &AppFrame::OnLoadFile, this, wxID_OPEN);
@@ -144,7 +146,8 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 		return count;
 		});
 
-	SetStatusText(inputArchive);
+	//SetStatusText(inputArchive);
+	m_statusBar->SetStatusText(inputArchive, 0);
 }
 
 void AppFrame::OnNextImage(wxCommandEvent& event)
@@ -153,6 +156,8 @@ void AppFrame::OnNextImage(wxCommandEvent& event)
 		return;
 	++(m_currentFile.value());
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
+	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
 }
 
 void AppFrame::OnPreviousImage(wxCommandEvent& event)
@@ -161,6 +166,8 @@ void AppFrame::OnPreviousImage(wxCommandEvent& event)
 		return;
 	--(m_currentFile.value());
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
+	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
 }
 
 void AppFrame::OnFirstImage(wxCommandEvent& event)
@@ -169,6 +176,8 @@ void AppFrame::OnFirstImage(wxCommandEvent& event)
 		return;
 	m_currentFile = m_currentFileList.cbegin();
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
+	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
 }
 
 void AppFrame::OnLastImage(wxCommandEvent& event)
@@ -177,6 +186,8 @@ void AppFrame::OnLastImage(wxCommandEvent& event)
 		return;
 	m_currentFile = m_currentFileList.cend() - 1;
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
+	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
 }
 
 void AppFrame::OnJumpPage(wxCommandEvent& event)
@@ -198,6 +209,8 @@ void AppFrame::OnJumpPage(wxCommandEvent& event)
 
 		m_currentFile = m_currentFileList.cbegin() + value - 1;
 		wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+		auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
+		wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
 	}
 
 }
@@ -218,8 +231,9 @@ void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 		wxMessageBox(wxT("No images found in the archive."), APP_NAME, wxOK | wxICON_INFORMATION);
 		return;
 	}
-
+	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
 	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
+	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
 }
 
 void AppFrame::OnAboutToolkit(wxCommandEvent& event)

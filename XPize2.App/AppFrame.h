@@ -9,6 +9,8 @@ class wxCommandEvent;
 class wxIcon;
 class Scroller;
 class ExtractionDoneEvent;
+class StatusBar;
+class NavigationEvent;
 
 class AppFrame : public wxFrame
 {
@@ -34,5 +36,6 @@ private:
 	wxString m_outputPath;
 	std::optional<std::vector<wxString>::const_iterator> m_currentFile;
 	std::future<size_t> m_extractionFuture;
+	StatusBar* m_statusBar;
 };
 

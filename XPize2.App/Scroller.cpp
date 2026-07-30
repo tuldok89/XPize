@@ -17,7 +17,7 @@ Scroller::Scroller(wxWindow* parent)
 void Scroller::OnLoadImage(LoadImageEvent& event)
 {
 	wxImage image;
-	auto result = image.LoadFile(event.GetPath());
+	auto result = image.LoadFile(event.GetPath().Prepend(wxT("\\\\?\\")));
 	if (!result)
 	{
 		wxMessageBox(wxT("Failed to load image: ") + event.GetPath(), wxT("Error"), wxOK | wxICON_ERROR);
