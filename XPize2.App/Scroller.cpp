@@ -13,6 +13,7 @@ Scroller::Scroller(wxWindow* parent)
 
 	Bind(APP_EVT_LOAD_IMAGE, &Scroller::OnLoadImage, this);
 	Bind(wxEVT_MOUSEWHEEL, &Scroller::OnMouseWheel, this);
+	Bind(wxEVT_CHAR, &Scroller::OnChar, this);
 }
 
 void Scroller::OnLoadImage(LoadImageEvent& event)
@@ -60,5 +61,45 @@ void Scroller::OnMouseWheel(wxMouseEvent& event)
 	if (pos != posY)
 	{
 		Scroll(0, static_cast<int>(pos));
+	}
+}
+
+void Scroller::OnChar(wxKeyEvent& event)
+{
+	const int maxPosX = GetScrollLines(wxHORIZONTAL) - GetScrollPageSize(wxHORIZONTAL);
+	const int maxPosY = GetScrollLines(wxVERTICAL) - GetScrollPageSize(wxVERTICAL);
+
+	int posX = 0;
+	int posY = 0;
+	GetViewStart(&posX, &posY);
+
+	long newX = posX;
+	long newY = posY;
+
+	switch (event.GetKeyCode())
+	{
+		case WXK_LEFT:
+			newX = posX - 64;
+			break;
+		case WXK_RIGHT:
+			newX = posX + 64;
+			break;
+		case WXK_UP:
+			newY = posY - 64;
+			break;
+		case WXK_DOWN:
+			newY = posY + 64;
+			break;
+		default:
+			event.Skip();
+			return;
+	}
+
+	newX = wxMin(wxMax(newX, 0L), maxPosX);
+	newY = wxMin(wxMax(newY, 0L), maxPosY);
+
+	if (newX != posX || newY != posY)
+	{
+		Scroll(static_cast<int>(newX), static_cast<int>(newY));
 	}
 }
