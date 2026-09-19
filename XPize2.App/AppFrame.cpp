@@ -119,6 +119,10 @@ AppFrame::AppFrame() : wxFrame(NULL, wxID_ANY, wxT("XPize Comic Book Reader"))
 	m_extractionProcess = NULL;
 }
 
+// Forward declaration (the definition is below). It must appear before the
+// destructor, which is the first user of DeleteDirectoryTree.
+static void DeleteDirectoryTree(const wxString& path);
+
 AppFrame::~AppFrame()
 {
 	if (m_extractionProcess)
@@ -132,10 +136,52 @@ AppFrame::~AppFrame()
 	appTempDir.AssignDir(wxStandardPaths::Get().GetTempDir());
 	appTempDir.AppendDir(APP_TEMP_FOLDER);
 
-	// wxWidgets 2.8 has no recursive wxFileName::Rmdir
-	wxString command;
-	command.Printf(wxT("cmd /c rmdir /s /q \"%s\""), appTempDir.GetPath(wxPATH_GET_VOLUME).c_str());
-	wxExecute(command, wxEXEC_SYNC);
+	// wxWidgets 2.8 has no recursive wxFileName::Rmdir and cmd.exe does not
+	// exist on Windows 98, so we delete the tree ourselves with the Win32 API.
+	DeleteDirectoryTree(appTempDir.GetPath(wxPATH_GET_VOLUME));
+}
+
+// ---------------------------------------------------------------------------
+// Recursive directory deletion (cmd.exe does not exist on Windows 98). Uses
+// the same Win32 APIs that 7-Zip uses; the W[ide] entry points are provided
+// on Windows 98 by unicows.dll.
+// ---------------------------------------------------------------------------
+static void DeleteDirectoryTree(const wxString& path)
+{
+	wxString searchPattern = path + wxT("\\*");
+
+	WIN32_FIND_DATAW findData;
+	HANDLE findHandle = ::FindFirstFileW(searchPattern.c_str(), &findData);
+	if (findHandle == INVALID_HANDLE_VALUE)
+	{
+		// Empty folder (or it no longer exists).
+		::RemoveDirectoryW(path.c_str());
+		return;
+	}
+
+	do
+	{
+		wxString name(findData.cFileName);
+		if (name == wxT(".") || name == wxT(".."))
+		{
+			continue;
+		}
+
+		wxString child = path + wxT("\\") + name;
+		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			DeleteDirectoryTree(child);
+			::RemoveDirectoryW(child.c_str());
+		}
+		else
+		{
+			::SetFileAttributesW(child.c_str(), FILE_ATTRIBUTE_NORMAL);
+			::DeleteFileW(child.c_str());
+		}
+	} while (::FindNextFileW(findHandle, &findData));
+
+	::FindClose(findHandle);
+	::RemoveDirectoryW(path.c_str());
 }
 
 void AppFrame::OnExit(wxCommandEvent& event)
