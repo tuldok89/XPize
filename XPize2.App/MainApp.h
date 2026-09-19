@@ -1,10 +1,8 @@
 #pragma once
-
-class wxApp;
+#include <wx/app.h>
 
 class MainApp : public wxApp
 {
 public:
-	virtual bool OnInit() override;
+	virtual bool OnInit();
 };
-

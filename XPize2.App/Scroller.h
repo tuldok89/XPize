@@ -1,6 +1,6 @@
 #pragma once
+#include <wx/scrolwin.h>
 
-class wxScrolledWindow;
 class wxStaticBitmap;
 class wxWindow;
 class LoadImageEvent;
@@ -12,5 +12,6 @@ public:
 	void OnLoadImage(LoadImageEvent& event);
 private:
 	wxStaticBitmap* m_imageControl;
-};
 
+	DECLARE_EVENT_TABLE()
+};

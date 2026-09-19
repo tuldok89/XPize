@@ -4,4 +4,4 @@ ExtractionDoneEvent::ExtractionDoneEvent(wxEventType eventType, int winid) : wxE
 {
 }
 
-wxDEFINE_EVENT(APP_EVT_EXTRACTION_DONE, ExtractionDoneEvent);
+DEFINE_LOCAL_EVENT_TYPE(APP_EVT_EXTRACTION_DONE)

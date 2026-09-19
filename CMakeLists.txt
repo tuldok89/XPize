@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.16)
 
 project(XPize2
     VERSION 1.0.0
@@ -6,21 +6,51 @@ project(XPize2
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Path to the base directory of the wxWidgets 2.8 installation.
+# If left empty, CMake probes the compiler default search paths.
+set(WXWIDGETS_DIR "" CACHE PATH "Base directory of the wxWidgets 2.8 installation")
 
-# Check if vcpkg is being used
-if(DEFINED ENV{VCPKG_ROOT})
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+# 7-Zip command line executable used to extract comic book archives.
+# Passed to the compiler as a string literal via a compile definition.
+set(XPIZE2_7ZIP_CLI "7z" CACHE STRING "7-Zip command line executable used for extraction")
+
+# ---------------------------------------------------------------------------
+# wxWidgets discovery (wxWidgets 2.8 pre-dates CMake support, so the layout is
+# configured manually). The supported layout for the gcc DLL build is:
+#   <base>/include                generic headers
+#   <base>/lib/gcc_dll/mswu       wx/setup.h (per-build configuration)
+#   <base>/lib/gcc_dll            import libraries and .dll files
+# ---------------------------------------------------------------------------
+set(WX_INCLUDE_DIR "")
+set(WX_SETUP_DIR "")
+set(WX_LIB_DIR "")
+
+if(WXWIDGETS_DIR)
+    set(WX_INCLUDE_DIR "${WXWIDGETS_DIR}/include")
+    set(WX_SETUP_DIR "${WXWIDGETS_DIR}/lib/gcc_dll/mswu")
+    set(WX_LIB_DIR "${WXWIDGETS_DIR}/lib/gcc_dll")
+else()
+    find_path(WX_INCLUDE_DIR wx/wx.h)
+    find_path(WX_SETUP_DIR wx/setup.h)
+    find_library(WX_WXM28U_CORE_LIB wxmsw28u_core)
+    if(WX_WXM28U_CORE_LIB)
+        get_filename_component(WX_LIB_DIR "${WX_WXM28U_CORE_LIB}" PATH)
+    endif()
 endif()
 
-# Find wxWidgets
-find_package(wxWidgets REQUIRED COMPONENTS core base)
+if(NOT WX_INCLUDE_DIR OR NOT WX_SETUP_DIR OR NOT WX_LIB_DIR)
+    message(FATAL_ERROR
+        "wxWidgets 2.8 not found. Set -DWXWIDGETS_DIR=<base directory of the "
+        "wxWidgets 2.8 installation>\nor make sure wxWidgets headers and "
+        "libraries are reachable from the compiler's default search paths.\n"
+        "Expected layout: <base>/include, <base>/lib/gcc_dll/mswu, <base>/lib/gcc_dll")
+endif()
 
-# Find libarchive
-find_package(LibArchive REQUIRED)
+# ---------------------------------------------------------------------------
+# Targets
+# ---------------------------------------------------------------------------
+link_directories(${WX_LIB_DIR})
 
-# Add executable
 add_executable(XPize2
     # Source files
     XPize2.App/MainApp.cpp
@@ -29,8 +59,10 @@ add_executable(XPize2
     XPize2.App/DirTraverser.cpp
     XPize2.App/ExtractionDoneEvent.cpp
     XPize2.App/LoadImageEvent.cpp
+    XPize2.App/NavigationEvent.cpp
     XPize2.App/Scroller.cpp
-    
+    XPize2.App/StatusBar.cpp
+
     # Header files
     XPize2.App/MainApp.h
     XPize2.App/AppFrame.h
@@ -38,55 +70,48 @@ add_executable(XPize2
     XPize2.App/DirTraverser.h
     XPize2.App/ExtractionDoneEvent.h
     XPize2.App/LoadImageEvent.h
+    XPize2.App/NavigationEvent.h
     XPize2.App/Scroller.h
+    XPize2.App/StatusBar.h
     XPize2.App/Constants.h
     XPize2.App/Util.h
-    
+
     # Resource file (Windows only)
     XPize2.App/XPize2.App.rc
 )
 
-# Set Windows subsystem for GUI application
+# Windows subsystem GUI application
 set_target_properties(XPize2 PROPERTIES
     WIN32_EXECUTABLE TRUE
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-# Configure wxWidgets
-target_link_libraries(XPize2 PRIVATE wxWidgets::wxWidgets)
-
-# Configure libarchive
-target_link_libraries(XPize2 PRIVATE LibArchive::LibArchive)
-
-# Add additional Windows libraries needed by the project
-if(WIN32)
-    target_link_libraries(XPize2 PRIVATE
-        Shlwapi.lib
-        WS2_32.lib
-        XmlLite.lib
-        Crypt32.lib
-        Comctl32.lib
-        Rpcrt4.lib
-        Wininet.lib
-        Oleacc.lib
-        Uxtheme.lib
-    )
-endif()
-
-# Add include directories
 target_include_directories(XPize2 PRIVATE
+    ${WX_SETUP_DIR}
+    ${WX_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/XPize2.App
 )
 
-# Add preprocessor definitions for Windows
+# 7-Zip CLI used at runtime (compile-time string literal)
+target_compile_definitions(XPize2 PRIVATE
+    XPIZE2_7ZIP_CLI="${XPIZE2_7ZIP_CLI}"
+)
+
 if(WIN32)
+    # Matches the Unicode + MSLU shared (DLL) build of wxWidgets 2.8.12
     target_compile_definitions(XPize2 PRIVATE
         _WINDOWS
         WXUSINGDLL
+        _UNICODE
+        wxUSE_UNICODE_MSLU=1
+        HAVE_W32API_H
+        __WXMSW__
     )
-    
+
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(XPize2 PRIVATE
             _DEBUG
+            __WXDEBUG__
         )
     else()
         target_compile_definitions(XPize2 PRIVATE
@@ -94,16 +119,52 @@ if(WIN32)
         )
     endif()
 
-    # Pass defines to the resource compiler (used by wx/msw/wx.rc for manifest embedding)
+    # The default wx.rc would embed a Common Controls 6.0 (XP+) manifest via
+    # wx/msw/wx.manifest; disable it for Windows 98 compatibility.
     set_source_files_properties(XPize2.App/XPize2.App.rc PROPERTIES
-        COMPILE_DEFINITIONS "wxUSE_RC_MANIFEST;wxUSE_DPI_AWARE_MANIFEST=2"
+        COMPILE_DEFINITIONS "wxUSE_NO_MANIFEST=1"
     )
 endif()
 
-# Set the output directory
-set_target_properties(XPize2 PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+target_link_libraries(XPize2 PRIVATE
+    wxmsw28u_core
+    wxmsw28u_adv
+    wxbase28u
+    wxtiff
+    wxjpeg
+    wxpng
+    wxzlib
+    wxregexu
+    wxexpat
+    unicows
+    gdiplus
 )
 
-# Copy the icon file to the build directory
+if(WIN32)
+    target_link_libraries(XPize2 PRIVATE
+        kernel32
+        user32
+        gdi32
+        comdlg32
+        winspool
+        winmm
+        shell32
+        comctl32
+        ole32
+        oleaut32
+        uuid
+        rpcrt4
+        advapi32
+        wsock32
+        odbc32
+        shlwapi
+    )
+endif()
+
+# Copy the icon and runtime DLLs to the output directory
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/XPize2.App/XPize-Icon.ico" DESTINATION "${CMAKE_BINARY_DIR}/bin")
+
+if(WIN32 AND WX_LIB_DIR)
+    file(GLOB WX_RUNTIME_DLLS "${WX_LIB_DIR}/*_gcc_custom.dll")
+    file(COPY ${WX_RUNTIME_DLLS} DESTINATION "${CMAKE_BINARY_DIR}/bin")
+endif()

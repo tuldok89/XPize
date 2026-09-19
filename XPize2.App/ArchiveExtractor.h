@@ -1,13 +1,15 @@
 #pragma once
 #include <wx/string.h>
-#include <cstdint>
-struct archive;
+
+class wxProcess;
+
 class ArchiveExtractor
 {
 public:
-	ArchiveExtractor() = default;
-	size_t extract(const wxString& fileName, const wxString& outputDir);
-private:
-	void copyData(struct archive* ar, struct archive* aw);
-};
+	ArchiveExtractor() {}
 
+	// Launch 7-Zip in the background to extract fileName into outputDir.
+	// handler->OnTerminate() is invoked when the process ends; returns true
+	// if the process was started successfully.
+	bool extract(const wxString& fileName, const wxString& outputDir, wxProcess* handler) const;
+};

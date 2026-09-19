@@ -1,16 +1,15 @@
 #pragma once
+#include <wx/statusbr.h>
 
-class wxStatusBar;
 class wxString;
+class wxWindow;
 class NavigationEvent;
-class wxDPIChangedEvent;
+
 class StatusBar : public wxStatusBar
 {
 public:
 	StatusBar(wxString initialText, wxWindow* parent);
 	void OnNavigation(NavigationEvent& event);
-	void OnDPIChanged(wxDPIChangedEvent& event);
-private:
-	void RecalculateFieldWidths();
-};
 
+	DECLARE_EVENT_TABLE()
+};

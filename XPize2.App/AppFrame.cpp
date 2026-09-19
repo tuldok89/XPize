@@ -3,15 +3,11 @@
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <wx/dir.h>
-#include <wx/mimetype.h>
 #include <wx/textdlg.h>
 #include <wx/utils.h>
+#include <wx/process.h>
 
 #include <algorithm>
-#include <future>
-#include <memory>
-
-#include <Shlwapi.h>
 
 #include "AppFrame.h"
 #include "Constants.h"
@@ -24,22 +20,70 @@
 #include "NavigationEvent.h"
 #include "StatusBar.h"
 
-enum AppEvtID {
-	ID_ABOUT_TOOLKIT
+// Menu command IDs (below wxID_LOWEST so they never clash with the standard
+// IDs). wxWidgets 2.8 does not define wxID_FIRST/wxID_LAST/wxID_JUMP_TO.
+enum AppEvtId {
+	ID_ABOUT_TOOLKIT = 2000
 };
 
-AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader"))
+enum NavMenuId {
+	ID_NAV_FIRST = 2001,
+	ID_NAV_LAST,
+	ID_NAV_JUMP_TO
+};
+
+// wxProcess subclass running the 7-Zip extraction; posts the completion event
+// to the frame and destroys itself when the process terminates.
+class ExtractionProcess : public wxProcess
 {
-	auto navMenu = new wxMenu;
-	auto nextMenuItem = new wxMenuItem(navMenu, wxID_FORWARD, wxT("&Next Image"), wxT("Load next image"));
+public:
+	ExtractionProcess(AppFrame* frame) : wxProcess(), m_frame(frame) {}
+
+	virtual void OnTerminate(int pid, int status)
+	{
+		if (m_frame)
+		{
+			m_frame->OnExtractionProcessEnded();
+			ExtractionDoneEvent done(APP_EVT_EXTRACTION_DONE, wxID_ANY);
+			wxPostEvent(m_frame, done);
+		}
+		delete this;
+	}
+
+	void DetachFromFrame()
+	{
+		m_frame = NULL;
+	}
+
+private:
+	AppFrame* m_frame;
+};
+
+BEGIN_EVENT_TABLE(AppFrame, wxFrame)
+	EVT_MENU(wxID_OPEN, AppFrame::OnLoadFile)
+	EVT_MENU(wxID_EXIT, AppFrame::OnExit)
+	EVT_MENU(wxID_ABOUT, AppFrame::OnAbout)
+	EVT_MENU(ID_ABOUT_TOOLKIT, AppFrame::OnAboutToolkit)
+	EVT_MENU(wxID_FORWARD, AppFrame::OnNextImage)
+	EVT_MENU(wxID_BACKWARD, AppFrame::OnPreviousImage)
+	EVT_MENU(ID_NAV_FIRST, AppFrame::OnFirstImage)
+	EVT_MENU(ID_NAV_LAST, AppFrame::OnLastImage)
+	EVT_MENU(ID_NAV_JUMP_TO, AppFrame::OnJumpPage)
+	EVT_EXTRACTION_DONE(AppFrame::OnExtractionDone)
+END_EVENT_TABLE()
+
+AppFrame::AppFrame() : wxFrame(NULL, wxID_ANY, wxT("XPize Comic Book Reader"))
+{
+	wxMenu* navMenu = new wxMenu;
+	wxMenuItem* nextMenuItem = new wxMenuItem(navMenu, wxID_FORWARD, wxT("&Next Image"), wxT("Load next image"));
 	nextMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_PAGEDOWN));
-	auto prevMenuItem = new wxMenuItem(navMenu, wxID_BACKWARD, wxT("&Previous Image"), wxT("Load previous image"));
+	wxMenuItem* prevMenuItem = new wxMenuItem(navMenu, wxID_BACKWARD, wxT("&Previous Image"), wxT("Load previous image"));
 	prevMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_PAGEUP));
-	auto firstMenuItem = new wxMenuItem(navMenu, wxID_FIRST, wxT("&First Image"), wxT("Load first image"));
+	wxMenuItem* firstMenuItem = new wxMenuItem(navMenu, ID_NAV_FIRST, wxT("&First Image"), wxT("Load first image"));
 	firstMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_HOME));
-	auto lastMenuItem = new wxMenuItem(navMenu, wxID_LAST, wxT("&Last Image"), wxT("Load last image"));
+	wxMenuItem* lastMenuItem = new wxMenuItem(navMenu, ID_NAV_LAST, wxT("&Last Image"), wxT("Load last image"));
 	lastMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_NORMAL, WXK_END));
-	auto jumpMenuItem = new wxMenuItem(navMenu, wxID_JUMP_TO, wxT("&Jump to..."), wxT("Jump to page"));
+	wxMenuItem* jumpMenuItem = new wxMenuItem(navMenu, ID_NAV_JUMP_TO, wxT("&Jump to..."), wxT("Jump to page"));
 	jumpMenuItem->SetAccel(new wxAcceleratorEntry(wxACCEL_CTRL, 'J'));
 
 	navMenu->Append(nextMenuItem);
@@ -48,17 +92,17 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 	navMenu->Append(lastMenuItem);
 	navMenu->Append(jumpMenuItem);
 
-	auto fileMenu = new wxMenu;
+	wxMenu* fileMenu = new wxMenu;
 	fileMenu->Append(wxID_OPEN);
 	fileMenu->AppendSubMenu(navMenu, wxT("&Navigation"));
 	fileMenu->AppendSeparator();
 	fileMenu->Append(wxID_EXIT, wxT("&Quit\tCtrl-Q"));
 
-	auto helpMenu = new wxMenu;
+	wxMenu* helpMenu = new wxMenu;
 	helpMenu->Append(wxID_ABOUT);
 	helpMenu->Append(ID_ABOUT_TOOLKIT, wxT("About Toolkit"));
 
-	auto menuBar = new wxMenuBar;
+	wxMenuBar* menuBar = new wxMenuBar;
 	menuBar->Append(fileMenu, wxT("&File"));
 	menuBar->Append(helpMenu, wxT("&Help"));
 
@@ -71,24 +115,27 @@ AppFrame::AppFrame() : wxFrame(nullptr, wxID_ANY, wxT("XPize Comic Book Reader")
 	SetStatusBar(m_statusBar);
 	Maximize();
 
-	Bind(wxEVT_MENU, &AppFrame::OnLoadFile, this, wxID_OPEN);
-	Bind(wxEVT_MENU, &AppFrame::OnExit, this, wxID_EXIT);
-	Bind(wxEVT_MENU, &AppFrame::OnAbout, this, wxID_ABOUT);
-	Bind(wxEVT_MENU, &AppFrame::OnNextImage, this, wxID_FORWARD);
-	Bind(wxEVT_MENU, &AppFrame::OnPreviousImage, this, wxID_BACKWARD);
-	Bind(wxEVT_MENU, &AppFrame::OnFirstImage, this, wxID_FIRST);
-	Bind(wxEVT_MENU, &AppFrame::OnLastImage, this, wxID_LAST);
-	Bind(wxEVT_MENU, &AppFrame::OnJumpPage, this, wxID_JUMP_TO);
-	Bind(wxEVT_MENU, &AppFrame::OnAboutToolkit, this, ID_ABOUT_TOOLKIT);
-	Bind(APP_EVT_EXTRACTION_DONE, &AppFrame::OnExtractionDone, this);
+	m_currentIndex = 0;
+	m_extractionProcess = NULL;
 }
 
 AppFrame::~AppFrame()
 {
+	if (m_extractionProcess)
+	{
+		ExtractionProcess* process = static_cast<ExtractionProcess*>(m_extractionProcess);
+		process->DetachFromFrame();
+		m_extractionProcess = NULL;
+	}
+
 	wxFileName appTempDir;
 	appTempDir.AssignDir(wxStandardPaths::Get().GetTempDir());
 	appTempDir.AppendDir(APP_TEMP_FOLDER);
-	appTempDir.Rmdir(wxPATH_RMDIR_RECURSIVE);
+
+	// wxWidgets 2.8 has no recursive wxFileName::Rmdir
+	wxString command;
+	command.Printf(wxT("cmd /c rmdir /s /q \"%s\""), appTempDir.GetPath(wxPATH_GET_VOLUME).c_str());
+	wxExecute(command, wxEXEC_SYNC);
 }
 
 void AppFrame::OnExit(wxCommandEvent& event)
@@ -110,6 +157,11 @@ void AppFrame::OnAbout(wxCommandEvent& event)
 	wxAboutBox(info);
 }
 
+void AppFrame::OnAboutToolkit(wxCommandEvent& event)
+{
+	wxMessageBox(wxVERSION_STRING, wxT("About wxWidgets"), wxOK | wxICON_INFORMATION);
+}
+
 void AppFrame::OnLoadFile(wxCommandEvent& event)
 {
 	wxFileDialog openFileDialog(this,
@@ -118,16 +170,15 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 		wxEmptyString,
 		wxT("Comic Book Files|*.cbz;*.cbr;*.cbt;*.cb7;*.zip;*.rar;*.tar;*.7z|All files (*.*)|*.*"),
 		wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-	auto result = openFileDialog.ShowModal();
 
-	if (result != wxID_OK)
+	if (openFileDialog.ShowModal() != wxID_OK)
 	{
 		return;
 	}
 
-	auto inputArchive = openFileDialog.GetPath();
+	wxString inputArchive = openFileDialog.GetPath();
 	wxFileName inputFileName(inputArchive);
-	auto tempFolder = wxStandardPaths::Get().GetTempDir();
+	wxString tempFolder = wxStandardPaths::Get().GetTempDir();
 	wxFileName outputFolder;
 	outputFolder.AssignDir(tempFolder);
 	outputFolder.AppendDir(APP_TEMP_FOLDER);
@@ -136,58 +187,63 @@ void AppFrame::OnLoadFile(wxCommandEvent& event)
 
 	this->SetCursor(wxCursor(wxCURSOR_WAIT));
 
-	auto& outputPath = m_outputPath; 
-
-	m_extractionFuture = std::async(std::launch::async, [this, inputArchive, outputPath]() {
-		ArchiveExtractor extractor;
-		auto count = extractor.extract(inputArchive, outputPath);
-		auto doneEvent = new ExtractionDoneEvent(APP_EVT_EXTRACTION_DONE, wxID_ANY);
-		wxQueueEvent(this, doneEvent);
-		return count;
-		});
-
-	//SetStatusText(inputArchive);
+	ExtractionProcess* process = new ExtractionProcess(this);
+	ArchiveExtractor extractor;
+	if (!extractor.extract(inputArchive, m_outputPath, process))
+	{
+		delete process;
+		this->SetCursor(wxCursor(wxCURSOR_DEFAULT));
+		wxMessageBox(wxT("Failed to start the archive extraction tool."), APP_NAME, wxOK | wxICON_ERROR);
+		return;
+	}
+	m_extractionProcess = process;
 	m_statusBar->SetStatusText(inputArchive, 0);
+}
+
+void AppFrame::OnExtractionProcessEnded()
+{
+	m_extractionProcess = NULL;
+}
+
+void AppFrame::LoadPage(size_t index)
+{
+	LoadImageEvent evt(APP_EVT_LOAD_IMAGE, wxID_ANY, m_currentFileList[index]);
+	wxPostEvent(m_scroller, evt);
+
+	NavigationEvent nav(APP_EVT_NAVIGATION, wxID_ANY, (int)index + 1, (int)m_currentFileList.size());
+	wxPostEvent(m_statusBar, nav);
 }
 
 void AppFrame::OnNextImage(wxCommandEvent& event)
 {
-	if (!m_currentFile.has_value() || m_currentFile == m_currentFileList.cend() - 1)
+	if (m_currentFileList.empty() || m_currentIndex + 1 >= m_currentFileList.size())
 		return;
-	++(m_currentFile.value());
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
-	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
+	++m_currentIndex;
+	LoadPage(m_currentIndex);
 }
 
 void AppFrame::OnPreviousImage(wxCommandEvent& event)
 {
-	if (!m_currentFile.has_value() || m_currentFile == m_currentFileList.cbegin())
+	if (m_currentFileList.empty() || m_currentIndex == 0)
 		return;
-	--(m_currentFile.value());
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
-	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
+	--m_currentIndex;
+	LoadPage(m_currentIndex);
 }
 
 void AppFrame::OnFirstImage(wxCommandEvent& event)
 {
 	if (m_currentFileList.empty())
 		return;
-	m_currentFile = m_currentFileList.cbegin();
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
-	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
+	m_currentIndex = 0;
+	LoadPage(m_currentIndex);
 }
 
 void AppFrame::OnLastImage(wxCommandEvent& event)
 {
 	if (m_currentFileList.empty())
 		return;
-	m_currentFile = m_currentFileList.cend() - 1;
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
-	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
+	m_currentIndex = m_currentFileList.size() - 1;
+	LoadPage(m_currentIndex);
 }
 
 void AppFrame::OnJumpPage(wxCommandEvent& event)
@@ -195,24 +251,21 @@ void AppFrame::OnJumpPage(wxCommandEvent& event)
 	if (m_currentFileList.empty())
 		return;
 
-	wxTextEntryDialog input(this, wxString::Format(wxT("Total pages: %s"), std::to_string(m_currentFileList.size())), wxT("Enter page number"));
+	wxString message;
+	message.Printf(wxT("Total pages: %u"), (unsigned)m_currentFileList.size());
+	wxTextEntryDialog input(this, message, wxT("Enter page number"));
 
 	if (input.ShowModal() == wxID_OK)
 	{
-		int value;
-		auto result = input.GetValue().ToInt(&value);
-		if (!result || value <= 0 || value > static_cast<int>(m_currentFileList.size()))
+		long value;
+		if (!input.GetValue().ToLong(&value) || value <= 0 || value > (int)m_currentFileList.size())
 		{
 			wxMessageBox(wxT("Invalid page"), wxT("Input error"), wxOK | wxICON_EXCLAMATION);
 			return;
 		}
-
-		m_currentFile = m_currentFileList.cbegin() + value - 1;
-		wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-		auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
-		wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
+		m_currentIndex = (size_t)value - 1;
+		LoadPage(m_currentIndex);
 	}
-
 }
 
 void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
@@ -224,19 +277,12 @@ void AppFrame::OnExtractionDone(ExtractionDoneEvent& event)
 	this->SetCursor(wxCursor(wxCURSOR_DEFAULT));
 	dir.Traverse(traverser);
 	std::sort(m_currentFileList.begin(), m_currentFileList.end(), NaturalComparer());
-	m_currentFile = m_currentFileList.begin();
+	m_currentIndex = 0;
 
-	if (m_currentFile == m_currentFileList.end())
+	if (m_currentFileList.empty())
 	{
 		wxMessageBox(wxT("No images found in the archive."), APP_NAME, wxOK | wxICON_INFORMATION);
 		return;
 	}
-	auto currentPage = std::distance(m_currentFileList.cbegin(), *m_currentFile);
-	wxPostEvent(m_scroller, LoadImageEvent(APP_EVT_LOAD_IMAGE, wxID_ANY, *(m_currentFile.value())));
-	wxPostEvent(m_statusBar, NavigationEvent(APP_EVT_NAVIGATION, wxID_ANY, currentPage + 1, m_currentFileList.size()));
-}
-
-void AppFrame::OnAboutToolkit(wxCommandEvent& event)
-{
-	wxInfoMessageBox(this);
+	LoadPage(m_currentIndex);
 }

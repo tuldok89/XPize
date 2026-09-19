@@ -10,10 +10,10 @@ bool MainApp::OnInit()
 	}
 	wxInitAllImageHandlers();
 
-	auto window = new AppFrame();
+	AppFrame* window = new AppFrame();
 	window->Show(true);
 
 	return true;
 }
 
-wxIMPLEMENT_APP(MainApp);
+IMPLEMENT_APP(MainApp)
