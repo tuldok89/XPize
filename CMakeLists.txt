@@ -119,11 +119,11 @@ if(WIN32)
         )
     endif()
 
-    # The default wx.rc would embed a Common Controls 6.0 (XP+) manifest via
-    # wx/msw/wx.manifest; disable it for Windows 98 compatibility.
-    set_source_files_properties(XPize2.App/XPize2.App.rc PROPERTIES
-        COMPILE_DEFINITIONS "wxUSE_NO_MANIFEST=1"
-    )
+    # Let wx/msw/wx.rc embed its own RT_MANIFEST (id 1/24, resource
+    # "wx/msw/wx.manifest", the standard Common Controls 6.0 / XP manifest).
+    # On Windows 98 the side-by-side loader has no SxS infrastructure, so it
+    # ignores the embedded manifest and falls back to the OS comctl32 — the
+    # same behaviour as 7-Zip's own binary. Do NOT set wxUSE_NO_MANIFEST here.
 endif()
 
 target_link_libraries(XPize2 PRIVATE
