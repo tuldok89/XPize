@@ -142,45 +142,67 @@ AppFrame::~AppFrame()
 }
 
 // ---------------------------------------------------------------------------
-// Recursive directory deletion (cmd.exe does not exist on Windows 98). Uses
-// the same Win32 APIs that 7-Zip uses; the W[ide] entry points are provided
-// on Windows 98 by unicows.dll.
+// Recursive directory deletion. wxWidgets 2.8 has no recursive
+// wxFileName::Rmdir (wxPATH_RMDIR_RECURSIVE only appears in wxWidgets 2.9+)
+// and cmd.exe does not exist on Windows 98, so we build on the library-level
+// recursion loop that wxWidgets 2.8 does provide: wxDir::Traverse() with a
+// wxDirTraverser subclass (the very mechanism this project's own DirTraverser
+// and 7-Zip's wx port use). Files are collected as they are found, and
+// directories -- reported parent-first by Traverse -- are removed
+// deepest-first once the walk completes.
 // ---------------------------------------------------------------------------
 static void DeleteDirectoryTree(const wxString& path)
 {
-	wxString searchPattern = path + wxT("\\*");
-
-	WIN32_FIND_DATAW findData;
-	HANDLE findHandle = ::FindFirstFileW(searchPattern.c_str(), &findData);
-	if (findHandle == INVALID_HANDLE_VALUE)
+	class TreeRemovalTraverser : public wxDirTraverser
 	{
-		// Empty folder (or it no longer exists).
-		::RemoveDirectoryW(path.c_str());
+	public:
+		TreeRemovalTraverser() { }
+
+		virtual wxDirTraverseResult OnFile(const wxString& filename)
+		{
+			m_files.Add(filename);
+			return wxDIR_CONTINUE;
+		}
+
+		virtual wxDirTraverseResult OnDir(const wxString& dirname)
+		{
+			// Traverse reports directories parent-first (before descending into
+			// them), so we collect them here and remove them deepest-first once
+			// the walk has finished, exactly as 7-Zip does.
+			m_dirs.Add(dirname);
+			return wxDIR_CONTINUE;
+		}
+
+		wxArrayString m_files;
+		wxArrayString m_dirs;
+	};
+
+	TreeRemovalTraverser traverser;
+	wxDir dir(path);
+	if (!dir.IsOpened())
+	{
+		// The directory does not exist (or cannot be opened).
 		return;
 	}
 
-	do
+	dir.Traverse(traverser);
+
+	// Delete every file first; clear the read-only attribute exactly as
+	// 7-Zip does (the W[ide] entry points are provided on Windows 98 by
+	// unicows.dll).
+	for (size_t i = 0; i < traverser.m_files.GetCount(); i++)
 	{
-		wxString name(findData.cFileName);
-		if (name == wxT(".") || name == wxT(".."))
-		{
-			continue;
-		}
+		::SetFileAttributesW(traverser.m_files[i].c_str(), FILE_ATTRIBUTE_NORMAL);
+		::DeleteFileW(traverser.m_files[i].c_str());
+	}
 
-		wxString child = path + wxT("\\") + name;
-		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-		{
-			DeleteDirectoryTree(child);
-			::RemoveDirectoryW(child.c_str());
-		}
-		else
-		{
-			::SetFileAttributesW(child.c_str(), FILE_ATTRIBUTE_NORMAL);
-			::DeleteFileW(child.c_str());
-		}
-	} while (::FindNextFileW(findHandle, &findData));
-
-	::FindClose(findHandle);
+	// Traverse reported the directories parent-first, so walk the collected
+	// list backwards to remove the deepest directories first. The root
+	// directory itself is removed last.
+	for (size_t i = traverser.m_dirs.GetCount(); i > 0; i--)
+	{
+		::RemoveDirectoryW(traverser.m_dirs[i - 1].c_str());
+	}
 	::RemoveDirectoryW(path.c_str());
 }
 
