@@ -281,6 +281,11 @@ void AppFrame::LoadPage(size_t index)
 	LoadImageEvent evt(APP_EVT_LOAD_IMAGE, wxID_ANY, m_currentFileList[index]);
 	wxPostEvent(m_scroller, evt);
 
+	// Keyboard events go to the window with focus; the scroller otherwise
+	// never receives them (its wxStaticBitmap child cannot take focus), so
+	// arrow-key scrolling would never work without this.
+	m_scroller->SetFocus();
+
 	NavigationEvent nav(APP_EVT_NAVIGATION, wxID_ANY, (int)index + 1, (int)m_currentFileList.size());
 	wxPostEvent(m_statusBar, nav);
 }
