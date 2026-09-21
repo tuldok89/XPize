@@ -53,8 +53,9 @@ void Scroller::OnMouseWheel(wxMouseEvent& event)
 		return;
 	}
 
+	int posX = 0;
 	int posY = 0;
-	GetViewStart(NULL, &posY);
+	GetViewStart(&posX, &posY);
 
 	long delta = static_cast<long>(rotation) * 64 * event.GetLinesPerAction() / wheelDelta;
 	long pos = posY - delta;
@@ -62,7 +63,7 @@ void Scroller::OnMouseWheel(wxMouseEvent& event)
 
 	if (pos != posY)
 	{
-		Scroll(0, static_cast<int>(pos));
+		Scroll(posX, static_cast<int>(pos));
 	}
 }
 
