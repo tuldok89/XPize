@@ -39,12 +39,6 @@ void Scroller::OnLoadImage(LoadImageEvent& event)
 
 void Scroller::OnMouseWheel(wxMouseEvent& event)
 {
-	if (event.GetWheelAxis() != wxMOUSE_WHEEL_VERTICAL)
-	{
-		event.Skip();
-		return;
-	}
-
 	const int wheelDelta = event.GetWheelDelta();
 	const int rotation = event.GetWheelRotation();
 

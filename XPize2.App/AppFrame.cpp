@@ -177,14 +177,17 @@ static void DeleteDirectoryTree(const wxString& path)
 		wxArrayString m_dirs;
 	};
 
-	TreeRemovalTraverser traverser;
-	wxDir dir(path);
-	if (!dir.IsOpened())
+	// wxDir::Open logs an error (and shows a dialog at exit) whenever the
+	// directory cannot be opened, so check for its existence first: the temp
+	// folder only exists after an archive has been extracted.
+	if (!wxDirExists(path))
 	{
 		// The directory does not exist (or cannot be opened).
 		return;
 	}
 
+	TreeRemovalTraverser traverser;
+	wxDir dir(path);
 	dir.Traverse(traverser);
 
 	// Delete every file first; clear the read-only attribute exactly as
